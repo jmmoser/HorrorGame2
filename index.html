@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="description" content="HUSH — a first-person horror game. She hears you.">
+<title>HUSH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=Rock+Salt&family=Special+Elite&family=Schoolbell&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game" tabindex="0" aria-label="HUSH game view"></canvas>
+
+  <!-- in-game HUD -->
+  <div id="hud" hidden>
+    <div id="crosshair"></div>
+    <div id="prompt"><span class="key">E</span><span id="prompt-text"></span></div>
+    <div id="objective"></div>
+    <div id="hint"></div>
+    <div id="subtitle"></div>
+    <div id="status">
+      <div id="fuses" hidden><i></i><i></i><i></i></div>
+      <div id="battery" hidden><span class="lbl">LIGHT</span><div class="bar"><b id="battery-fill"></b></div></div>
+      <div id="stamina"><div class="bar"><b id="stamina-fill"></b></div></div>
+    </div>
+    <div id="resume-tip" hidden>Click to look around</div>
+  </div>
+
+  <!-- touch controls -->
+  <div id="touch" hidden>
+    <div id="touchzone"></div>
+    <div id="stick"><div id="knob"></div></div>
+    <button class="tbtn" id="t-use" data-key="KeyE">USE</button>
+    <button class="tbtn" id="t-light" data-key="KeyF">LIGHT</button>
+    <button class="tbtn" id="t-crouch" data-key="KeyC">CROUCH</button>
+    <button class="tbtn" id="t-pause" data-key="KeyP">II</button>
+  </div>
+
+  <!-- title cards over black -->
+  <div id="card" hidden><div id="card-text"></div></div>
+
+  <!-- note reader -->
+  <div id="screen-note" class="screen" hidden>
+    <article id="note-paper">
+      <h2 id="note-title"></h2>
+      <div id="note-body"></div>
+    </article>
+    <button class="ghost" id="note-close">Put it down <span class="key">E</span></button>
+  </div>
+
+  <!-- loading -->
+  <div id="screen-loading" class="screen">
+    <div class="load-wrap">
+      <div class="load-title">HUSH</div>
+      <div class="load-bar"><b id="load-fill"></b></div>
+      <div id="load-text">Unlocking the east wing…</div>
+    </div>
+  </div>
+
+  <!-- warning -->
+  <div id="screen-warning" class="screen" hidden>
+    <div class="panel narrow">
+      <p class="eyebrow">Before you go in</p>
+      <p class="warn">This game contains flashing lights, sudden loud sounds and disturbing imagery.</p>
+      <p class="warn dim">Wear headphones. Turn off the lights. Do not play if you are sensitive to flashing light or have a heart condition.</p>
+      <button class="primary" id="btn-accept">I understand</button>
+    </div>
+  </div>
+
+  <!-- main menu -->
+  <div id="screen-menu" class="screen" hidden>
+    <div class="menu-inner">
+      <h1 class="title" aria-label="HUSH"><span>H</span><span>U</span><span>S</span><span>H</span></h1>
+      <p class="tagline">the night matron of Saint Maren’s</p>
+      <nav class="menu">
+        <button class="menu-item" id="btn-begin">Begin</button>
+        <button class="menu-item" id="btn-settings">Settings</button>
+        <button class="menu-item" id="btn-how">How to survive</button>
+      </nav>
+      <p class="foot">Headphones on. Lights off. She hears you.</p>
+    </div>
+  </div>
+
+  <!-- pause -->
+  <div id="screen-pause" class="screen" hidden>
+    <div class="panel narrow">
+      <p class="eyebrow">Paused</p>
+      <h2 class="h-serif">Hold your breath</h2>
+      <nav class="menu centered">
+        <button class="menu-item" id="btn-resume">Resume</button>
+        <button class="menu-item" id="btn-settings2">Settings</button>
+        <button class="menu-item" id="btn-how2">How to survive</button>
+        <button class="menu-item" id="btn-restart">Start over</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- settings -->
+  <div id="screen-settings" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">Settings</p>
+      <label class="row" for="set-sens"><span>Look sensitivity</span><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05" value="1"></label>
+      <label class="row" for="set-vol"><span>Volume</span><input type="range" id="set-vol" min="0" max="1" step="0.02" value="0.8"></label>
+      <label class="row" for="set-bright"><span>Brightness</span><input type="range" id="set-bright" min="0.6" max="1.8" step="0.02" value="1"></label>
+      <label class="row" for="set-fov"><span>Field of view</span><input type="range" id="set-fov" min="60" max="95" step="1" value="74"></label>
+      <div class="row"><span>Graphics</span>
+        <div class="seg" id="set-quality">
+          <button data-q="low">Low</button><button data-q="medium">Medium</button><button data-q="high">High</button>
+        </div>
+      </div>
+      <button class="primary" id="btn-settings-back">Back</button>
+    </div>
+  </div>
+
+  <!-- how to play -->
+  <div id="screen-how" class="screen" hidden>
+    <div class="panel">
+      <p class="eyebrow">How to survive</p>
+      <div class="how">
+        <dl>
+          <dt><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></dt><dd>Move</dd>
+          <dt><span class="key">Mouse</span></dt><dd>Look</dd>
+          <dt><span class="key">E</span></dt><dd>Use, open, take, hide</dd>
+          <dt><span class="key">F</span></dt><dd>Flashlight</dd>
+          <dt><span class="key">Shift</span></dt><dd>Run — it is loud</dd>
+          <dt><span class="key">C</span></dt><dd>Crouch — it is quiet</dd>
+          <dt><span class="key">Esc</span></dt><dd>Pause</dd>
+        </dl>
+        <ul>
+          <li>She hunts by sound. Footsteps, doors, running.</li>
+          <li>She hums while she wanders. If the humming stops, she has heard something.</li>
+          <li>Lockers will hide you, unless she sees you climb in.</li>
+          <li>In the dark, low and still, she can pass within arm’s reach.</li>
+        </ul>
+      </div>
+      <button class="primary" id="btn-how-back">Back</button>
+    </div>
+  </div>
+
+  <!-- death -->
+  <div id="screen-death" class="screen" hidden>
+    <div class="panel narrow center">
+      <h2 class="death-title">She found you</h2>
+      <p id="death-tip" class="warn dim"></p>
+      <button class="primary" id="btn-retry">Try again</button>
+    </div>
+  </div>
+
+  <!-- ending -->
+  <div id="screen-ending" class="screen" hidden>
+    <div class="panel narrow center">
+      <div id="ending-lines"></div>
+      <div id="ending-final" hidden>
+        <h1 class="title small" aria-label="HUSH"><span>H</span><span>U</span><span>S</span><span>H</span></h1>
+        <p class="tagline" id="ending-stats"></p>
+        <button class="primary" id="btn-again">Go back in</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fatal" hidden></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
