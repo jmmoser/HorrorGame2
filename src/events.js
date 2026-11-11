@@ -786,7 +786,7 @@ export class Events {
     if (p.sprinting) p.stamina = Math.min(1, p.stamina + dt / 16);
     if (f.shutter === 1) {
       // she arrives a breath after the shutter clears crouch height
-      const remain = this.shutterAt + 4.5 - g.time;
+      const remain = this.shutterAt + 5.2 - g.time;
       m.finaleSpeed = remain > 0.25 ? clamp((m.dist - 1.4) / remain, 1.6, 8.5) : 8.5;
     } else m.finaleSpeed = undefined;
     // through

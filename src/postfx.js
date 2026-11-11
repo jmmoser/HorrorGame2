@@ -113,6 +113,9 @@ export class PostFX {
   constructor(renderer) {
     this.renderer = renderer;
     this.quality = 'high';
+    // HDR targets need float colour buffers; fall back to 8-bit where a GPU lacks them.
+    const ex = renderer.extensions;
+    this.rtType = ex.has('EXT_color_buffer_float') || ex.has('EXT_color_buffer_half_float') ? THREE.HalfFloatType : THREE.UnsignedByteType;
     this.scene = new THREE.Scene();
     this.cam = new THREE.Camera();
     const geo = new THREE.BufferGeometry();
@@ -142,8 +145,8 @@ export class PostFX {
     this.quality = quality;
     for (const k of ['rtScene', 'rtA', 'rtB', 'rtC', 'rtD', 'rtE']) if (this[k]) this[k].dispose();
     const samples = quality === 'high' ? 4 : quality === 'medium' ? 2 : 0;
-    this.rtScene = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples, depthBuffer: true });
-    const o = { type: THREE.HalfFloatType, depthBuffer: false };
+    this.rtScene = new THREE.WebGLRenderTarget(w, h, { type: this.rtType, samples, depthBuffer: true });
+    const o = { type: this.rtType, depthBuffer: false };
     const w2 = Math.max(2, w >> 1), h2 = Math.max(2, h >> 1), w4 = Math.max(2, w >> 2), h4 = Math.max(2, h >> 2), w8 = Math.max(2, w >> 3), h8 = Math.max(2, h >> 3);
     this.rtA = new THREE.WebGLRenderTarget(w2, h2, o);
     this.rtB = new THREE.WebGLRenderTarget(w4, h4, o);
