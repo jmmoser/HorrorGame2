@@ -366,13 +366,16 @@ export class Level {
       const cx = x + c.x * cs + c.z * sn, cz = z - c.x * sn + c.z * cs;
       const hw = (Math.abs(c.w * cs) + Math.abs(c.d * sn)) / 2, hd = (Math.abs(c.w * sn) + Math.abs(c.d * cs)) / 2;
       made.push(this.addCollider(cx - hw, cz - hd, cx + hw, cz + hd, y + c.minY, y + c.maxY));
-      if (parts.navBlock) {
-        // only block a nav cell when the prop covers its centre region
-        for (let r = toRow(cz - hd); r <= toRow(cz + hd); r++) for (let cc = toCol(cx - hw); cc <= toCol(cx + hw); cc++) {
-          const ox = Math.min(cx + hw, (cc + 1) * CELL) - Math.max(cx - hw, cc * CELL);
-          const oz = Math.min(cz + hd, (r + 1) * CELL) - Math.max(cz - hd, r * CELL);
-          if (ox > 1.3 && oz > 0.9 || ox > 0.9 && oz > 1.3) this.nav.blocked[idx(cc, r)] = 1;
-        }
+      // Keep the AI from routing through furniture: block cells the prop mostly fills,
+      // or whose centre it covers.
+      for (let r = toRow(cz - hd); r <= toRow(cz + hd); r++) for (let cc = toCol(cx - hw); cc <= toCol(cx + hw); cc++) {
+        if (cc < 0 || r < 0 || cc >= COLS || r >= ROWS) continue;
+        const ox = Math.min(cx + hw, (cc + 1) * CELL) - Math.max(cx - hw, cc * CELL);
+        const oz = Math.min(cz + hd, (r + 1) * CELL) - Math.max(cz - hd, r * CELL);
+        const mx = cellX(cc), mz = cellZ(r);
+        const centre = mx > cx - hw && mx < cx + hw && mz > cz - hd && mz < cz + hd;
+        const big = parts.navBlock && (ox > 1.3 && oz > 0.9 || ox > 0.9 && oz > 1.3);
+        if ((centre || big) && c.maxY > 0.5 && !this.nav.doorAt[idx(cc, r)]) this.nav.blocked[idx(cc, r)] = 1;
       }
     }
     return made;

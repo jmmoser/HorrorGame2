@@ -443,7 +443,7 @@ export class Matron {
     if (this.wait > 0) { this.wait -= dt; return; }
     if (!this.path) {
       // The director: she drifts closer the longer it has been quiet.
-      const want = clamp(20 - this.calm * 0.22, 5, 20);
+      const want = clamp(18 - this.calm * 0.3, 4, 18);
       let best = null, bs = 1e9;
       for (let i = 0; i < 7; i++) {
         const c = this._randomWalkable(p.pos.x, p.pos.z, 3, 26);

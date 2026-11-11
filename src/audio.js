@@ -29,9 +29,10 @@ export class AudioEngine {
     this.limiter = ctx.createDynamicsCompressor();
     this.limiter.threshold.value = -8; this.limiter.knee.value = 6; this.limiter.ratio.value = 14;
     this.limiter.attack.value = 0.002; this.limiter.release.value = 0.18;
-    this.master.connect(this.limiter); this.limiter.connect(ctx.destination);
+    this.post = ctx.createGain(); this.post.gain.value = 0.92; // headroom for limiter overshoot
+    this.master.connect(this.limiter); this.limiter.connect(this.post); this.post.connect(ctx.destination);
 
-    this.sfx = ctx.createGain(); this.sfx.connect(this.master);
+    this.sfx = ctx.createGain(); this.sfx.gain.value = 0.62; this.sfx.connect(this.master);
     this.music = ctx.createGain(); this.music.gain.value = 0.9; this.music.connect(this.master);
     this.amb = ctx.createGain(); this.amb.gain.value = 1; this.amb.connect(this.master);
 
@@ -97,8 +98,8 @@ export class AudioEngine {
   }
 
   _distCurve(k) {
-    const n = 1024, c = new Float32Array(n);
-    for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; c[i] = ((1 + k) * x) / (1 + k * Math.abs(x)); }
+    const n = 1025, c = new Float32Array(n); // odd length: the centre sample is exactly zero, so silence stays silent
+    for (let i = 0; i < n; i++) { const x = (i * 2) / (n - 1) - 1; c[i] = ((1 + k) * x) / (1 + k * Math.abs(x)); }
     return c;
   }
 
@@ -171,7 +172,7 @@ export class AudioEngine {
     const lfo = this._osc('sine', 0.07), lfoG = this._gain(40);
     lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start(t);
     lp.connect(droneG); droneG.connect(this.amb);
-    const dSend = this._gain(0.3); droneG.connect(dSend); dSend.connect(this.reverbIn);
+    const dSend = this._gain(0.2); droneG.connect(dSend); dSend.connect(this.reverbIn);
     this.droneG = droneG;
 
     // air / room tone
@@ -237,13 +238,13 @@ export class AudioEngine {
     const ctx = this.ctx, t = ctx.currentTime;
     this.fear = s.fear; this.chase = s.chase;
     const q = s.quiet ? 0 : 1;
-    this.droneG.gain.setTargetAtTime(0.2 * q + 0.08 * s.fear, t, 0.5);
-    this.airG.gain.setTargetAtTime((s.basement ? 0.2 : 0.12) * q, t, 0.5);
-    this.tenG.gain.setTargetAtTime(Math.pow(s.fear, 1.5) * 0.085 * q, t, 0.6);
-    this.dreadG.gain.setTargetAtTime(Math.pow(s.fear, 2) * 0.16 * q, t, 0.6);
-    this.chG.gain.setTargetAtTime(s.chase * 0.42, t, s.chase > 0.5 ? 0.15 : 1.2);
-    this.rainG.gain.setTargetAtTime((s.rain || 0) * 0.16, t, 0.4);
-    this.buzzG.gain.setTargetAtTime((s.buzz || 0) * 0.022, t, 0.03);
+    this.droneG.gain.setTargetAtTime(0.045 * q + 0.03 * s.fear, t, 0.5);
+    this.airG.gain.setTargetAtTime((s.basement ? 0.055 : 0.032) * q, t, 0.5);
+    this.tenG.gain.setTargetAtTime(Math.pow(s.fear, 1.5) * 0.05 * q, t, 0.6);
+    this.dreadG.gain.setTargetAtTime(Math.pow(s.fear, 2) * 0.075 * q, t, 0.6);
+    this.chG.gain.setTargetAtTime(s.chase * 0.2, t, s.chase > 0.5 ? 0.15 : 1.2);
+    this.rainG.gain.setTargetAtTime((s.rain || 0) * 0.05, t, 0.4);
+    this.buzzG.gain.setTargetAtTime((s.buzz || 0) * 0.012, t, 0.03);
 
     // heartbeat
     const hr = s.heart ?? clamp(s.fear * 1.2, 0, 1);
@@ -252,7 +253,7 @@ export class AudioEngine {
       if (this._heartT <= 0) {
         const bpm = 62 + hr * 90;
         this._heartT = 60 / bpm;
-        this._heartbeat(0.25 + hr * 0.55);
+        this._heartbeat(0.14 + hr * 0.36);
       }
     }
     // exhausted breathing
@@ -314,7 +315,7 @@ export class AudioEngine {
   }
 
   _s_footstep(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 1) * 0.5, reverb: 0.22, life: 1 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 1) * 0.3, reverb: 0.22, life: 1 });
     const s = o.surface || 'lino', v = 0.85 + Math.random() * 0.3;
     if (s === 'wood') {
       this._thump(out, t, { f0: 130 * v, f1: 60, dur: 0.09, gain: 0.9 });
@@ -345,7 +346,7 @@ export class AudioEngine {
   }
 
   _s_pickup(o) {
-    const t = this.now, out = this._out({ gain: o.gain ?? 0.3, reverb: 0.5, life: 2 });
+    const t = this.now, out = this._out({ gain: o.gain ?? 0.2, reverb: 0.5, life: 2 });
     for (const [f, d] of [[392, 0], [587, 0.09]]) {
       const os = this._osc('sine', f), g = this._gain(0);
       os.connect(g); g.connect(out);
@@ -374,7 +375,7 @@ export class AudioEngine {
 
   _s_creak(o) {
     const out = this._out({ pos: o.pos, gain: o.gain ?? 0.6, reverb: 0.6, life: 3 });
-    this._creak(out, this.now, o.dur || rand(0.6, 1.6), 0.35, o.pitch || rand(0.7, 1.3));
+    this._creak(out, this.now, o.dur || rand(0.6, 1.6), 1.7, o.pitch || rand(0.7, 1.3));
   }
 
   _s_doorOpen(o) {
@@ -441,7 +442,7 @@ export class AudioEngine {
     const os = this._osc('sine', f), g = this._gain(0);
     os.frequency.setValueAtTime(f, t); os.frequency.exponentialRampToValueAtTime(f * 1.9, t + 0.05);
     os.connect(g); g.connect(out);
-    this._env(g.gain, t, [[0, 0], [0.004, 0.7], [0.07, 0]]);
+    this._env(g.gain, t, [[0, 0], [0.004, 2.2], [0.07, 0]]);
     os.start(t); os.stop(t + 0.1);
   }
 
@@ -451,7 +452,7 @@ export class AudioEngine {
     const l = this._osc('sine', rand(3, 7)), lg = this._gain(12); l.connect(lg); lg.connect(os.frequency);
     os.connect(f); f.connect(g); g.connect(out);
     const d = rand(1.5, 3);
-    this._env(g.gain, t, [[0, 0], [d * 0.4, 1.4], [d, 0]]);
+    this._env(g.gain, t, [[0, 0], [d * 0.4, 2.2], [d, 0]]);
     os.start(t); l.start(t); os.stop(t + d + 0.1); l.stop(t + d + 0.1);
     if (Math.random() < 0.6) this._s_clang({ pos: o.pos, gain: 0.3, f: rand(300, 600) });
   }
@@ -594,7 +595,7 @@ export class AudioEngine {
   }
 
   _s_zap(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: o.gain ?? 0.5, reverb: 0.3, life: 2 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 0.5) * 0.5, reverb: 0.3, life: 2 });
     const os = this._osc('sawtooth', 100), hp = this._filter('highpass', 1500, 1), g = this._gain(0);
     os.connect(hp); hp.connect(g); g.connect(out);
     const d = o.dur || 0.25;
@@ -605,7 +606,7 @@ export class AudioEngine {
   }
 
   _s_lever(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: o.gain ?? 1, reverb: 0.6, life: 3 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 1) * 0.6, reverb: 0.6, life: 3 });
     this._burst(out, t, { dur: 0.03, f: 2200, q: 2, gain: 1 });
     this._thump(out, t + 0.02, { f0: 130, f1: 40, dur: 0.25, gain: 1.4 });
     this._burst(out, t + 0.02, { dur: 0.2, f: 320, q: 6, gain: 1.4 });
@@ -638,7 +639,7 @@ export class AudioEngine {
   }
 
   _s_bounce(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: o.gain ?? 0.7, reverb: 0.6, life: 2 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 0.7) * 0.6, reverb: 0.6, life: 2 });
     this._thump(out, t, { f0: 240, f1: 120, dur: 0.09, gain: 1 });
     this._burst(out, t, { dur: 0.03, f: 900, q: 1, gain: 0.3 });
   }
@@ -654,7 +655,7 @@ export class AudioEngine {
   }
 
   _s_drawer(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: o.gain ?? 0.9, reverb: 0.6, life: 3 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 0.9) * 0.6, reverb: 0.6, life: 3 });
     const fl = this._burst(out, t, { dur: 0.7, f: 320, q: 1.5, gain: 1.3, type: 'brown', attack: 0.1 });
     fl.frequency.linearRampToValueAtTime(520, t + 0.7);
     for (let i = 0; i < 8; i++) this._burst(out, t + i * 0.085, { dur: 0.02, f: 1800, q: 3, gain: 0.3 });
@@ -676,7 +677,7 @@ export class AudioEngine {
   }
 
   _s_thunder(o) {
-    const t = this.now, out = this._out({ gain: o.gain ?? 0.9, reverb: 0.9, life: 6, bus: this.amb });
+    const t = this.now, out = this._out({ gain: (o.gain ?? 0.9) * 0.18, reverb: 0.9, life: 6, bus: this.amb });
     const fl = this._burst(out, t, { dur: 3.5, f: 500, ft: 'lowpass', q: 0.5, gain: 2.2, type: 'brown', attack: 0.02 });
     fl.frequency.exponentialRampToValueAtTime(90, t + 3.2);
     this._burst(out, t, { dur: 0.25, f: 1800, q: 0.4, gain: 0.9 });
@@ -698,7 +699,7 @@ export class AudioEngine {
   }
 
   _s_fuse(o) {
-    const t = this.now, out = this._out({ pos: o.pos, gain: o.gain ?? 0.8, reverb: 0.4, life: 2 });
+    const t = this.now, out = this._out({ pos: o.pos, gain: (o.gain ?? 0.8) * 0.6, reverb: 0.4, life: 2 });
     this._burst(out, t, { dur: 0.025, f: 2600, q: 2, gain: 1 });
     this._thump(out, t + 0.02, { f0: 220, f1: 110, dur: 0.07, gain: 0.8 });
     this._s_zap({ pos: o.pos, gain: 0.25, dur: 0.12 });
@@ -822,7 +823,7 @@ export class AudioEngine {
   }
 
   _l_static(o) {
-    const out = this._loopOut(o.pos, o.gain ?? 0.5, 0.2, 1.5, 1.5);
+    const out = this._loopOut(o.pos, (o.gain ?? 0.5) * 0.6, 0.2, 1.5, 1.5);
     const n = this._noise('white'), hp = this._filter('highpass', 1200, 0.5), bp = this._filter('peaking', 3000, 1);
     bp.gain.value = 8;
     n.connect(hp); hp.connect(bp); bp.connect(out.input); n.start(this.now, n._off);
@@ -850,7 +851,7 @@ export class AudioEngine {
   }
 
   _l_generator(o) {
-    const out = this._loopOut(o.pos, o.gain ?? 0.8, 0.4, 3, 1.2);
+    const out = this._loopOut(o.pos, (o.gain ?? 0.8) * 0.35, 0.4, 3, 1.2);
     const t = this.now, nodes = [];
     const lp = this._filter('lowpass', 300, 1);
     for (const f of [47, 94.5, 141]) { const os = this._osc('sawtooth', f); os.connect(lp); os.start(t); nodes.push(os); }
@@ -872,7 +873,7 @@ export class AudioEngine {
   }
 
   _l_shutter(o) {
-    const out = this._loopOut(o.pos, o.gain ?? 1, 0.5, 3, 1.0);
+    const out = this._loopOut(o.pos, (o.gain ?? 1) * 0.5, 0.5, 3, 1.0);
     const t = this.now;
     const os = this._osc('sawtooth', 68), os2 = this._osc('square', 34.3), lp = this._filter('lowpass', 700, 2), g = this._gain(0.5);
     os.connect(lp); os2.connect(lp); lp.connect(g); g.connect(out.input); os.start(t); os2.start(t);
@@ -883,7 +884,7 @@ export class AudioEngine {
   }
 
   _l_shower(o) {
-    const out = this._loopOut(o.pos, o.gain ?? 0.6, 0.5, 1.5, 1.6);
+    const out = this._loopOut(o.pos, (o.gain ?? 0.6) * 0.7, 0.5, 1.5, 1.6);
     const n = this._noise('white'), hp = this._filter('highpass', 2500, 0.4), n2 = this._noise('pink'), g2 = this._gain(0.8), lp = this._filter('lowpass', 1200, 0.5);
     n.connect(hp); hp.connect(out.input); n2.connect(lp); lp.connect(g2); g2.connect(out.input);
     n.start(this.now, n._off); n2.start(this.now, n2._off);

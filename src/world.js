@@ -319,7 +319,7 @@ export function populate(L, T, P) {
   for (const c of [2, 5, 8]) grime(cx(c), cz(3), 2.2);
 
   // =============================== NIGHT STATION ============================
-  L.put(P.counter({ w: 4 }), cx(13), cz(3) + 0.3, 0);
+  L.put(P.counter({ w: 3.96 }), cx(13) + 1, cz(3), 0);
   {
     const [x, z] = L.wallPos(12, 1, 'n', 0.75, 0.4);
     L.put(P.desk(), x, z, 0);
@@ -329,7 +329,7 @@ export function populate(L, T, P) {
   }
   L.wallPut(P.medCabinet(), 14, 2, 'e', 0.4); L.put(P.cart(), cx(11) + 0.1, cz(4) + 0.5, 0.4);
   L.wallPut(P.cabinet(), 11, 2, 'w', 0.6); L.wallPut(P.cabinet({ open: 3 }), 11, 2, 'w', 0.6, 0.55);
-  battery('bat3', cx(13) + 0.6, 0.985, cz(3) + 0.3);
+  battery('bat3', cx(13) + 0.4, 0.985, cz(3));
   L.wallPut(P.clock(), 14, 1, 'n', 0.05, 0, 2.2);
   O.nurseLight = L.addLight(cx(12) + 1, cz(3) - 1, { state: 'on', intensity: 0.6, color: 0xd8ffe4, tag: 'nurse' });
 
@@ -474,6 +474,7 @@ export function populate(L, T, P) {
 
   // =============================== BOILER ROOM ==============================
   L.put(P.boiler(), cx(16), cz(29) - 0.2, 0);
+  for (const c of [15, 16, 17]) L.nav.blocked[idx(c, 29)] = 1;
   {
     const [x, z, rot] = L.wallPos(19, 31, 'e', 1.0);
     L.put(P.furnace(), x, z, rot);

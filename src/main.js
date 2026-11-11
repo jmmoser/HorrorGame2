@@ -124,8 +124,9 @@ class Game {
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play') this.pause(); });
 
     this.state = 'menu';
-    if (store.get('warned', false) && sessionStorage.getItem('hush.restart')) { ui.show('menu'); }
-    else ui.show('warning');
+    let restarted = false;
+    try { restarted = !!sessionStorage.getItem('hush.restart'); } catch (e) { /* */ }
+    if (store.get('warned', false) && restarted) ui.show('menu'); else ui.show('warning');
     try { sessionStorage.removeItem('hush.restart'); } catch (e) { /* */ }
     this.fx.fade = 0; this.fx.fadeTo = 0;
     this.last = performance.now();
@@ -220,7 +221,7 @@ class Game {
     $('btn-how').onclick = () => openHow('menu'); $('btn-how2').onclick = () => openHow('pause');
     $('btn-settings-back').onclick = () => ui.show(this.returnTo); $('btn-how-back').onclick = () => ui.show(this.returnTo);
     $('btn-resume').onclick = () => this.resume();
-    const restart = () => { try { sessionStorage.setItem('hush.restart', '1'); } catch (e) { /* */ } location.reload(); };
+    const restart = () => { try { sessionStorage.setItem('hush.restart', '1'); } catch (e) { /* */ } try { audio.suspend(); } catch (e) { /* */ } location.reload(); };
     $('btn-restart').onclick = restart; $('btn-again').onclick = restart;
     $('btn-retry').onclick = () => this.respawn();
     $('note-close').onclick = () => this.closeNote();
@@ -402,7 +403,7 @@ class Game {
       this.time += dt;
       if (st === 'play') {
         this.playTime += dt;
-        if (inp.pause && (this.input.touch || this.input.dragLook || !this.input.locked)) { this.pause(); return; }
+        if (inp.pause) { this.pause(); return; }
         this.player.look(inp.lookX, inp.lookY);
         if (inp.light) this.player.toggleLight();
         if (inp.interact) {
